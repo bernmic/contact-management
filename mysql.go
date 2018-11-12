@@ -73,7 +73,7 @@ func (db *DB) initializeContact() {
 }
 
 func (db *DB) FindAllContacts() ([]*Contact, error) {
-	rows, err := db.Query("SELECT id, firstname, lastname, company, address1, address2, zipcode, city, country, tag FROM contact")
+	rows, err := db.Query("SELECT id, firstname, lastname, company, address1, address2, zipcode, city, country, tag FROM contact ORDER BY lastname, firstname")
 	if err != nil {
 		log.Errorf("Error fetching contact table: %v", err)
 		return nil, err

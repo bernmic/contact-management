@@ -17,6 +17,6 @@ type Contact struct {
 	Zipcode   string   `json:"zipcode,omitempty"`
 	City      string   `json:"city,omitempty"`
 	Country   string   `json:"country,omitempty"`
-	Tag       string   `json:"tag"`
+	Tag       string   `json:"tag,omitempty"`
 	Phones    []*Phone `json:"phones,omitempty"`
 }

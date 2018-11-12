@@ -2,9 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
+	"io"
+	"os"
 )
 
 const CREATE_CONTACT_TABLE = `
@@ -19,6 +23,9 @@ CREATE TABLE contact (
   city varchar(255),
   country varchar(255),
   tag varchar(1024),
+  email varchar(255),
+  web varchar(255),
+  birthday date,
 PRIMARY KEY (id)
 )`
 
@@ -51,14 +58,20 @@ func New() (*DB, error) {
 		panic(fmt.Sprintf("%v", err))
 	}
 	db := &DB{*mysql}
-	db.initializeContact()
+	db.Exec("DROP TABLE phone")
+	db.Exec("DROP TABLE contact")
+	created := db.initializeContact()
 	db.initializePhone()
+
+	if created {
+		db.insertTestData()
+	}
 	return db, nil
 }
 
 /*----------------------------------------------------------------------------------------*/
 
-func (db *DB) initializeContact() {
+func (db *DB) initializeContact() bool {
 	_, err := db.Query("SELECT 1 FROM contact LIMIT 1")
 	if err != nil {
 		log.Info("Table contact does not exists. Creating now.")
@@ -69,11 +82,13 @@ func (db *DB) initializeContact() {
 		} else {
 			log.Info("Contact Table successfully created....")
 		}
+		return true
 	}
+	return false
 }
 
 func (db *DB) FindAllContacts() ([]*Contact, error) {
-	rows, err := db.Query("SELECT id, firstname, lastname, company, address1, address2, zipcode, city, country, tag FROM contact ORDER BY lastname, firstname")
+	rows, err := db.Query("SELECT id, firstname, lastname, company, address1, address2, zipcode, city, country, tag, email, web, birthday FROM contact ORDER BY lastname, firstname")
 	if err != nil {
 		log.Errorf("Error fetching contact table: %v", err)
 		return nil, err
@@ -82,9 +97,27 @@ func (db *DB) FindAllContacts() ([]*Contact, error) {
 	contacts := make([]*Contact, 0)
 	for rows.Next() {
 		contact := new(Contact)
-		err := rows.Scan(&contact.Id, &contact.Firstname, &contact.Lastname, &contact.Company, &contact.Address1, &contact.Address2, &contact.Zipcode, &contact.City, &contact.Country, &contact.Tag)
+		birthday := mysql.NullTime{}
+		err := rows.Scan(
+			&contact.Id,
+			&contact.Firstname,
+			&contact.Lastname,
+			&contact.Company,
+			&contact.Address1,
+			&contact.Address2,
+			&contact.Zipcode,
+			&contact.City,
+			&contact.Country,
+			&contact.Tag,
+			&contact.Email,
+			&contact.Web,
+			&birthday,
+		)
 		if err != nil {
 			log.Error(err)
+		}
+		if birthday.Valid {
+			contact.Birthday = &birthday.Time
 		}
 		contacts = append(contacts, contact)
 	}
@@ -96,10 +129,28 @@ func (db *DB) FindAllContacts() ([]*Contact, error) {
 
 func (db *DB) FindContactById(id int64) (*Contact, error) {
 	contact := Contact{}
-	err := db.QueryRow("SELECT id,firstname, lastname, company, address1, address2, zipcode, city, country, tag FROM contact WHERE id=?", id).Scan(&contact.Id, &contact.Firstname, &contact.Lastname, &contact.Company, &contact.Address1, &contact.Address2, &contact.Zipcode, &contact.City, &contact.Country, &contact.Tag)
+	birthday := mysql.NullTime{}
+	err := db.QueryRow("SELECT id,firstname, lastname, company, address1, address2, zipcode, city, country, tag, email, web, birthday FROM contact WHERE id=?", id).Scan(
+		&contact.Id,
+		&contact.Firstname,
+		&contact.Lastname,
+		&contact.Company,
+		&contact.Address1,
+		&contact.Address2,
+		&contact.Zipcode,
+		&contact.City,
+		&contact.Country,
+		&contact.Tag,
+		&contact.Email,
+		&contact.Web,
+		&birthday,
+	)
 	if err != nil {
 		log.Error(err)
 		return nil, err
+	}
+	if birthday.Valid {
+		contact.Birthday = &birthday.Time
 	}
 	contact.Phones, err = db.findPhoneByContact(contact.Id)
 	if err != nil {
@@ -111,7 +162,7 @@ func (db *DB) FindContactById(id int64) (*Contact, error) {
 
 func (db *DB) InsertContact(contact *Contact) (*Contact, error) {
 	tx, err := db.Begin()
-	result, err := tx.Exec("INSERT INTO contact (firstname, lastname, company, address1, address2, zipcode, city, country, tag) VALUES(?,?,?,?,?,?,?,?,?)", contact.Firstname, contact.Lastname, contact.Company, contact.Address1, contact.Address2, contact.Zipcode, contact.City, contact.Country, contact.Tag)
+	result, err := tx.Exec("INSERT INTO contact (firstname, lastname, company, address1, address2, zipcode, city, country, tag, email, web, birthday) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", contact.Firstname, contact.Lastname, contact.Company, contact.Address1, contact.Address2, contact.Zipcode, contact.City, contact.Country, contact.Tag, contact.Email, contact.Web, contact.Birthday)
 	if err != nil {
 		log.Errorf("Error inserting contact: %v", err)
 		tx.Rollback()
@@ -144,7 +195,7 @@ func (db *DB) InsertContact(contact *Contact) (*Contact, error) {
 
 func (db *DB) UpdateContact(contact *Contact) (*Contact, error) {
 	tx, err := db.Begin()
-	_, err = tx.Exec("UPDATE contact SET firstname=?, lastname=?, company=?, address1=?, address2=?, zipcode=?, city=?, country=?, tag=? WHERE id=?", contact.Firstname, contact.Lastname, contact.Company, contact.Address1, contact.Address2, contact.Zipcode, contact.City, contact.Country, contact.Tag, contact.Id)
+	_, err = tx.Exec("UPDATE contact SET firstname=?, lastname=?, company=?, address1=?, address2=?, zipcode=?, city=?, country=?, tag=?, email=?, web=?, birthday=? WHERE id=?", contact.Firstname, contact.Lastname, contact.Company, contact.Address1, contact.Address2, contact.Zipcode, contact.City, contact.Country, contact.Tag, contact.Email, contact.Web, contact.Birthday, contact.Id)
 	if err != nil {
 		log.Errorf("Error updating contact: %v", err)
 		tx.Rollback()
@@ -242,4 +293,54 @@ func (txi *TX) insertPhone(phone *Phone) (*Phone, error) {
 	}
 	phone.Id = id
 	return phone, nil
+}
+
+func (db *DB) insertTestData() {
+	f, err := os.Open("us-500.csv")
+	if err != nil {
+		log.Errorf("Testdata not found (us-500.csv)")
+		return
+	}
+	r := csv.NewReader(f)
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if record[0] != "first_name" {
+			contact := Contact{
+				Firstname: record[0],
+				Lastname:  record[1],
+				Company:   record[2],
+				Address1:  record[3],
+				City:      record[4],
+				Country:   record[6],
+				Zipcode:   record[7],
+				Email:     record[10],
+				Web:       record[11],
+			}
+			phones := make([]*Phone, 0)
+			if record[8] != "" {
+				phone := Phone{
+					Name:   "Telefon 1",
+					Number: record[8],
+				}
+				phones = append(phones, &phone)
+			}
+			if record[9] != "" {
+				phone := Phone{
+					Name:   "Telefon 2",
+					Number: record[9],
+				}
+				phones = append(phones, &phone)
+			}
+			if len(phones) > 0 {
+				contact.Phones = phones
+			}
+			db.InsertContact(&contact)
+		}
+	}
 }

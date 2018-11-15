@@ -1,0 +1,66 @@
+<h2 mat-dialog-title>{{data.title}}</h2>
+
+<mat-dialog-content>
+  <mat-form-field>
+    <input matInput
+           placeholder="Firstname"
+           [(ngModel)]="contact.firstname">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Lastname"
+           [(ngModel)]="contact.lastname">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Company"
+           [(ngModel)]="contact.company">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Address1"
+           [(ngModel)]="contact.address1">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Address2"
+           [(ngModel)]="contact.address2">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Zip"
+           [(ngModel)]="contact.zipcode">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="City"
+           [(ngModel)]="contact.city">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Country"
+           [(ngModel)]="contact.country">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           type="email"
+           placeholder="EMail"
+           [(ngModel)]="contact.email">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           placeholder="Web"
+           [(ngModel)]="contact.web">
+  </mat-form-field>
+  <mat-form-field>
+    <input matInput
+           type="date"
+           placeholder="Birthday"
+           [(ngModel)]="contact.birthday">
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-button (click)="onCloseConfirm()">Save</button>&nbsp;
+  <button mat-button (click)="onCloseCancel()">Cancel</button>
+</mat-dialog-actions>

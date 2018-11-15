@@ -1,0 +1,34 @@
+<button mat-button mat-icon-button (click)="addContact()"><mat-icon>person_add</mat-icon></button>
+<mat-card *ngIf="contact">
+  <mat-card-title>{{contact?.firstname}} {{contact?.lastname}}</mat-card-title>
+  <mat-card-subtitle>{{contact?.company}}</mat-card-subtitle>
+  <mat-card-content>
+    <dl>
+      <dt>{{contact?.address1}}</dt>
+      <dt>{{contact?.address2}}</dt>
+      <dt>{{contact?.zipcode}} {{contact?.city}}</dt>
+      <dt>{{contact?.country}}</dt>
+    </dl>
+    <dl>
+      <dt>EMail</dt>
+      <dd>{{contact?.email}}</dd>
+      <dt>Web</dt>
+      <dd>{{contact?.web}}</dd>
+    </dl>
+    <dl *ngIf="contact?.birthday">
+      <dt>Birthday</dt>
+      <dd>{{contact?.birthday}}</dd>
+    </dl>
+    <dl *ngIf="contact?.phones">
+      <div *ngFor="let phone of contact.phones">
+        <dt>{{phone.name}}</dt>
+        <dd>{{phone.number}}</dd>
+      </div>
+    </dl>
+  </mat-card-content>
+  <mat-card-actions>
+    <button mat-button mat-icon-button (click)="editContact()"><mat-icon>edit</mat-icon></button>
+    <button mat-button mat-icon-button [vcdDownloadVCard]="exportContact()"><mat-icon>get_app</mat-icon></button>
+    <button mat-button mat-icon-button color="warn" (click)="confirmDelete()"><mat-icon>delete</mat-icon></button>
+  </mat-card-actions>
+</mat-card>

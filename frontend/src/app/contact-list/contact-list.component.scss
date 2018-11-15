@@ -1,0 +1,18 @@
+mat-list-item {
+  cursor: pointer;
+}
+
+.container {
+  height: 100%;
+}
+.contact-list {
+  margin-left: 1em;
+  //height: 500px;
+  overflow: scroll;
+}
+
+.contact-detail {
+  margin-top: 2em;
+  margin-right: 1em;
+  height: 500px;
+}

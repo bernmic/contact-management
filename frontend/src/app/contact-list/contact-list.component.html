@@ -1,0 +1,18 @@
+<div class="container" fxLayout="row" fxLayout.xs="column" fxLayoutWrap fxLayoutGap="0.5%" fxLayoutAlign="left">
+  <div fxFlex="40%" class="contact-list" [style.height.px]="listHeight">
+    <mat-list>
+      <div *ngFor="let prefix of prefixes">
+        <a name="{{prefix}}"></a>
+        <h3>{{prefix}}</h3>
+        <mat-list-item *ngFor="let contact of filterContactsStartwith(prefix)" (click)="contactClicked(contact)">
+          <mat-icon mat-list-icon>person</mat-icon>
+          <h4 mat-line>{{contact.firstname}} {{contact.lastname}}</h4>
+          <p mat-line> {{contact.company}} </p>
+        </mat-list-item>
+      </div>
+    </mat-list>
+  </div>
+  <div fxFlex="60%" class="contact-detail">
+    <app-contact-detail [contact]="selectedContact"></app-contact-detail>
+  </div>
+</div>

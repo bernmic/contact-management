@@ -15,7 +15,7 @@ func InitAndStartRouter(db *DB) {
 	gin.SetMode("debug")
 
 	router := gin.New()
-
+	router.Use(CorsMiddleware())
 	router.Use(ginrus.Ginrus(log.New(), time.RFC3339, false))
 	router.Use(gin.Recovery())
 	router.GET("/api/contact", db.Contacts)
@@ -101,4 +101,17 @@ func (db *DB) RemoveContact(c *gin.Context) {
 func respondWithError(code int, message string, c *gin.Context) {
 	c.JSON(code, gin.H{"message": message})
 	c.Abort()
+}
+
+func CorsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Headers", "Authorization, Content-type")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, HEAD")
+		if c.Request.Method == "OPTIONS" {
+			c.Data(http.StatusOK, "text/plain", nil)
+			c.Abort()
+		}
+		c.Next()
+	}
 }

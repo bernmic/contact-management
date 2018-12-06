@@ -1,12 +1,14 @@
 package main
 
 import (
-	"github.com/gin-gonic/contrib/ginrus"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gin-contrib/static"
+	"github.com/gin-gonic/contrib/ginrus"
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 /*----------------------------------------------------------------------------------------*/
@@ -18,6 +20,7 @@ func InitAndStartRouter(db *DB) {
 	router.Use(CorsMiddleware())
 	router.Use(ginrus.Ginrus(log.New(), time.RFC3339, false))
 	router.Use(gin.Recovery())
+	router.Use(static.Serve("/", static.LocalFile("static", true)))
 	router.GET("/api/contact", db.Contacts)
 	router.GET("/api/contact/:id", db.Contact)
 	router.POST("/api/contact", db.CreateContact)

@@ -5,5 +5,6 @@
 .idea/
 go2music
 *.tar
+us-500.csv
 static/
 

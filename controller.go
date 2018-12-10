@@ -5,10 +5,33 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/contrib/ginrus"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	contactsCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "counter_contacts",
+			Help: "total of requests to endpoint /contact",
+		},
+		[]string{"status", "method"},
+	)
+	contactCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "counter_contact",
+			Help: "total of requests to endpoint /contact/:id",
+		},
+		[]string{"status", "method"},
+	)
 )
 
 /*----------------------------------------------------------------------------------------*/
@@ -26,7 +49,9 @@ func InitAndStartRouter(db *DB) {
 	router.POST("/api/contact", db.CreateContact)
 	router.PUT("/api/contact/:id", db.ModifyContact)
 	router.DELETE("/api/contact/:id", db.RemoveContact)
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.Run(":8080")
+
 }
 
 /*----------------------------------------------------------------------------------------*/
@@ -34,9 +59,11 @@ func InitAndStartRouter(db *DB) {
 func (db *DB) Contacts(c *gin.Context) {
 	contacts, err := db.FindAllContacts()
 	if err == nil {
+		contactsCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusOK), "method": http.MethodGet}).Inc()
 		c.JSON(http.StatusOK, contacts)
 		return
 	}
+	contactsCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusInternalServerError), "method": http.MethodGet}).Inc()
 	respondWithError(http.StatusInternalServerError, "Cound not read contacts", c)
 }
 
@@ -44,13 +71,16 @@ func (db *DB) Contact(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Errorf("Error parsing id: %v", err)
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodGet}).Inc()
 		respondWithError(http.StatusBadRequest, "invalid id", c)
 	}
 	contact, err := db.FindContactById(id)
 	if err != nil {
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusNotFound), "method": http.MethodGet}).Inc()
 		respondWithError(http.StatusNotFound, "contact not found", c)
 		return
 	}
+	contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusOK), "method": http.MethodGet}).Inc()
 	c.JSON(http.StatusOK, contact)
 }
 
@@ -59,14 +89,17 @@ func (db *DB) CreateContact(c *gin.Context) {
 	err := c.BindJSON(contact)
 	if err != nil {
 		log.Warn("cannot decode request", err)
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodPost}).Inc()
 		respondWithError(http.StatusBadRequest, "bad request", c)
 		return
 	}
 	contact, err = db.InsertContact(contact)
 	if err != nil {
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodPost}).Inc()
 		respondWithError(http.StatusBadRequest, "bad request", c)
 		return
 	}
+	contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusCreated), "method": http.MethodPost}).Inc()
 	c.JSON(http.StatusCreated, contact)
 }
 
@@ -75,14 +108,17 @@ func (db *DB) ModifyContact(c *gin.Context) {
 	err := c.BindJSON(contact)
 	if err != nil {
 		log.Warn("cannot decode request", err)
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodPut}).Inc()
 		respondWithError(http.StatusBadRequest, "bad request", c)
 		return
 	}
 	contact, err = db.UpdateContact(contact)
 	if err != nil {
 		respondWithError(http.StatusBadRequest, "bad request", c)
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodPut}).Inc()
 		return
 	}
+	contactsCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusOK), "method": http.MethodPut}).Inc()
 	c.JSON(http.StatusOK, contact)
 }
 
@@ -90,12 +126,15 @@ func (db *DB) RemoveContact(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		log.Errorf("Error parsing id: %v", err)
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodDelete}).Inc()
 		respondWithError(http.StatusBadRequest, "invalid id", c)
 	}
 	if db.DeleteContact(id) != nil {
+		contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusBadRequest), "method": http.MethodDelete}).Inc()
 		respondWithError(http.StatusBadRequest, "cannot delete contact", c)
 		return
 	}
+	contactCounter.With(prometheus.Labels{"status": strconv.Itoa(http.StatusOK), "method": http.MethodDelete}).Inc()
 	c.JSON(http.StatusOK, "")
 }
 

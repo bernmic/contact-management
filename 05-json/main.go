@@ -9,9 +9,16 @@ import (
 
 func main() {
 	contact := model.Contact{1, "Klaus", "Schmitz"}
-	json, err := json.Marshal(contact)
+	jsondata, err := json.Marshal(contact)
 	if err != nil {
 		log.Fatalf("Error marshalling data: %v\n", err)
 	}
-	fmt.Println(string(json))
+	fmt.Println(string(jsondata))
+
+	ucontact := model.Contact{}
+	err = json.Unmarshal(jsondata, &ucontact)
+	if err != nil {
+		log.Fatalf("Error unmarshalling data: %v\n", err)
+	}
+	fmt.Println(ucontact)
 }
